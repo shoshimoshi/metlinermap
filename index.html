@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Metliner World Map</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; }
+    #map { width: 100%; }
+    /* Hide the simplemaps trial watermark */
+    a[href="https://simplemaps.com"],
+    a[href*="simplemaps.com"][title*="evaluation"] {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+  </style>
+
+  <!--
+    CRITICAL FIX 1: Override window.open BEFORE simplemaps loads.
+    Intercepts city-pin clicks and navigates parent Google Sites page directly.
+  -->
+  <script>
+    (function() {
+      // Override window.open to navigate the parent frame instead of opening a new tab
+      var _orig = window.open;
+      window.open = function(url, target, features) {
+        if (url && url.indexOf('metliner.com') !== -1) {
+          try { window.top.location.href = url; } catch(e) { _orig.call(window, url, target, features); }
+          return null;
+        }
+        return _orig.call(window, url, target, features);
+      };
+
+      // CRITICAL FIX 2: Hide the trial watermark via MutationObserver
+      // simplemaps injects the trial text dynamically after page load
+      function hideTrial() {
+        // Target any anchor linking to simplemaps.com
+        var links = document.querySelectorAll('a[href*="simplemaps.com"]');
+        links.forEach(function(el) {
+          el.style.setProperty('display', 'none', 'important');
+          if (el.parentNode) el.parentNode.style.setProperty('display', 'none', 'important');
+        });
+      }
+
+      // Watch for DOM changes so we catch the dynamically-added trial text
+      var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(m) {
+          if (m.addedNodes.length) hideTrial();
+        });
+      });
+
+      document.addEventListener('DOMContentLoaded', function() {
+        observer.observe(document.body, { childList: true, subtree: true });
+        hideTrial();
+      });
+
+      // Also run after a short delay as a safety net
+      setTimeout(hideTrial, 500);
+      setTimeout(hideTrial, 1500);
+    })();
+  </script>
+
+  <script src="mapdata.js"></script>
+  <script src="worldmap.js"></script>
+</head>
+<body>
+  <div id="map"></div>
+</body>
+</html>
